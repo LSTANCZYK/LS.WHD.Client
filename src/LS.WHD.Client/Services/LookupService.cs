@@ -27,8 +27,7 @@ internal sealed class LookupService : ILookupService
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        QueryParameters? qp = pagination is null ? null :
-            new QueryParameters(("limit", pagination.Limit.ToString()), ("start", pagination.Start.ToString()));
+        QueryParameters? qp = ServiceHelpers.BuildPagination(pagination);
 
         var result = await _http.GetAsync<List<Tech>>("Techs", qp, cancellationToken);
         return result ?? [];

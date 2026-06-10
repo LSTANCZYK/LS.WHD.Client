@@ -13,7 +13,8 @@ public sealed class CreateNoteRequest
 
     /// <summary>
     /// Whether the note is visible to the client.
-    /// Defaults to <c>false</c> (internal note).
+    /// When <c>false</c> (the default), the note is internal only and not shown to the requester.
+    /// When <c>true</c>, the note is visible to the client in the self-service portal.
     /// </summary>
     public bool IsClientNote { get; init; } = false;
 

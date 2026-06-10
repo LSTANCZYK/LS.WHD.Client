@@ -14,8 +14,7 @@ internal sealed class RequestTypeService : IRequestTypeService
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        QueryParameters? qp = pagination is null ? null :
-            new QueryParameters(("limit", pagination.Limit.ToString()), ("start", pagination.Start.ToString()));
+        QueryParameters? qp = ServiceHelpers.BuildPagination(pagination);
 
         var result = await _http.GetAsync<List<RequestType>>(Resource, qp, cancellationToken);
         return result ?? [];

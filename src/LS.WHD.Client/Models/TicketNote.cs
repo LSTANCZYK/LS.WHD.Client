@@ -11,7 +11,10 @@ public sealed class TicketNote
     /// <summary>Text content of the note.</summary>
     public string? NoteText { get; set; }
 
-    /// <summary>Whether this note is visible to the client (false = internal only).</summary>
+    /// <summary>
+    /// Whether this note is visible to the client (the requester).
+    /// When <c>false</c>, the note is internal and not shown in the self-service portal.
+    /// </summary>
     public bool? IsClientNote { get; set; }
 
     /// <summary>Whether the note is a solution note.</summary>

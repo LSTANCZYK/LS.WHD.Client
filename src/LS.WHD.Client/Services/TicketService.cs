@@ -14,7 +14,7 @@ internal sealed class TicketService : ITicketService
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        var qp = BuildPagination(pagination);
+        var qp = ServiceHelpers.BuildPagination(pagination);
         var result = await _http.GetAsync<List<Ticket>>(Resource, qp, cancellationToken);
         return result ?? [];
     }
@@ -30,10 +30,4 @@ internal sealed class TicketService : ITicketService
 
     public Task DeleteAsync(long id, CancellationToken cancellationToken = default)
         => _http.DeleteAsync($"{Resource}/{id}", cancellationToken);
-
-    private static QueryParameters? BuildPagination(PaginationOptions? p)
-    {
-        if (p is null) return null;
-        return new QueryParameters(("limit", p.Limit.ToString()), ("start", p.Start.ToString()));
-    }
 }

@@ -14,7 +14,7 @@ internal sealed class ClientService : IClientService
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        var qp = BuildQuery(pagination);
+        var qp = ServiceHelpers.BuildPagination(pagination);
         var result = await _http.GetAsync<List<HelpDeskClient>>(Resource, qp, cancellationToken);
         return result ?? [];
     }
@@ -27,17 +27,11 @@ internal sealed class ClientService : IClientService
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        var qp = BuildQuery(pagination);
+        var qp = ServiceHelpers.BuildPagination(pagination);
         qp ??= new QueryParameters();
         qp["search"] = search;
 
         var result = await _http.GetAsync<List<HelpDeskClient>>(Resource, qp, cancellationToken);
         return result ?? [];
-    }
-
-    private static QueryParameters? BuildQuery(PaginationOptions? p)
-    {
-        if (p is null) return null;
-        return new QueryParameters(("limit", p.Limit.ToString()), ("start", p.Start.ToString()));
     }
 }
