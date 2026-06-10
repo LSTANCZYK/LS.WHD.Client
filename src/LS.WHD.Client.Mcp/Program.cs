@@ -14,11 +14,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices(services =>
     {
-        var options = WhdConfiguration.LoadOptions();
-        var whdClient = new WhdClient(options);
-
-        services.AddSingleton(whdClient);
-        services.AddSingleton<WhdClientService>();
+        services.AddSingleton<WhdClientService>(_ =>
+            new WhdClientService(new WhdClient(WhdConfiguration.LoadOptions())));
 
         services.AddMcpServer()
             .WithStdioServerTransport()
