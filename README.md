@@ -7,6 +7,7 @@ A modern, idiomatic C# client library for the **SolarWinds Web Help Desk (WHD) R
 - Supports **API Key** and **Basic Auth** authentication
 - Covers tickets, clients, assets, locations, request types, notes, and lookup data
 - Handles pagination and error responses
+- **Name-based metadata resolution** — refer to priorities, request types, and custom fields by display name
 
 ---
 
@@ -91,6 +92,112 @@ var options = new WhdClientOptions
 
 ---
 
+## Name-Based Metadata Resolution
+
+WHD REST APIs require numeric IDs for priorities, request types, and custom fields.
+This library lets you use **display names** instead by loading lookup metadata into an
+in-memory cache at startup.
+
+### 1. Initialize the metadata cache
+
+Call `InitializeMetadataCacheAsync()` once after creating the client:
+
+```csharp
+var client = new WhdClient(options);
+await client.InitializeMetadataCacheAsync();
+```
+
+### 2. Create / update tickets by name
+
+Use `NamedCreateTicketRequest` and `NamedUpdateTicketRequest` with `client.CreateTicketAsync`
+and `client.UpdateTicketAsync`:
+
+```csharp
+// Create a ticket — use display names for priority, request type, and custom fields
+var ticket = await client.CreateTicketAsync(new NamedCreateTicketRequest
+{
+    Subject      = "Printer is broken",
+    Detail       = "Office printer on floor 2 prints blank pages.",
+    ClientId     = 101,
+    PriorityType = "High",          // resolved to its numeric ID automatically
+    RequestType  = "IT Support",    // resolved to its numeric ID automatically
+    CustomFields =
+    [
+        new NamedCustomFieldValue { Field = "Department", Value = "Finance" },
+        new NamedCustomFieldValue { Field = "Cost Center", Value = "CC-200" }
+    ]
+});
+
+// Update a ticket — again use names; only non-null fields are sent
+await client.UpdateTicketAsync(ticket!.Id, new NamedUpdateTicketRequest
+{
+    StatusType   = "Resolved",
+    PriorityType = "Low"
+});
+```
+
+Numeric ID strings are also accepted, so existing workflows that pass IDs still work:
+
+```csharp
+// "2" is parsed as the numeric ID 2 — no cache lookup needed
+await client.CreateTicketAsync(new NamedCreateTicketRequest
+{
+    Subject      = "Quick fix",
+    PriorityType = "2"              // same as PriorityTypeId = 2 in the numeric API
+});
+```
+
+### 3. Resolve names manually (optional)
+
+You can call the resolver directly if you need the numeric ID for another purpose:
+
+```csharp
+long priorityId    = client.Metadata.ResolvePriorityId("High");
+long requestTypeId = client.Metadata.ResolveRequestTypeId("IT Support");
+long fieldId       = client.Metadata.ResolveCustomFieldId("Department");
+long statusId      = client.Metadata.ResolveStatusTypeId("Resolved");
+```
+
+### 4. Refresh the cache
+
+Call `RefreshAsync()` whenever metadata changes in WHD:
+
+```csharp
+await client.Metadata.RefreshAsync();
+// or equivalently:
+await client.InitializeMetadataCacheAsync();
+```
+
+### Error handling for name resolution
+
+| Situation | Exception |
+|---|---|
+| Cache not yet initialized | `InvalidOperationException` |
+| Name not found in cache | `WhdMetadataException` |
+| Name matches multiple entries | `WhdMetadataException` (ambiguous) |
+
+```csharp
+using LS.WHD.Client.Exceptions;
+
+try
+{
+    await client.CreateTicketAsync(new NamedCreateTicketRequest
+    {
+        Subject      = "Test",
+        PriorityType = "Typo Priority"   // does not exist
+    });
+}
+catch (WhdMetadataException ex)
+{
+    Console.WriteLine($"Could not resolve {ex.MetadataKind} '{ex.LookupValue}': {ex.Message}");
+}
+```
+
+If two entries share the same name in WHD, resolution by name throws an ambiguous error.
+In that case pass the numeric ID string directly (e.g. `"2"`) as a workaround.
+
+---
+
 ## Supported Operations
 
 ### Tickets
@@ -103,7 +210,7 @@ var tickets = await client.Tickets.ListAsync(
 // Get single ticket
 var ticket = await client.Tickets.GetAsync(1234);
 
-// Create ticket
+// Create ticket (numeric IDs — original API)
 var created = await client.Tickets.CreateAsync(new CreateTicketRequest
 {
     Subject       = "Printer is broken",
@@ -114,11 +221,27 @@ var created = await client.Tickets.CreateAsync(new CreateTicketRequest
     LocationId    = 5
 });
 
+// Create ticket (display names — requires InitializeMetadataCacheAsync first)
+var created = await client.CreateTicketAsync(new NamedCreateTicketRequest
+{
+    Subject      = "Printer is broken",
+    ClientId     = 101,
+    PriorityType = "High",
+    RequestType  = "IT Support"
+});
+
 // Update ticket (only provided fields are sent)
 var updated = await client.Tickets.UpdateAsync(1234, new UpdateTicketRequest
 {
     StatusTypeId = 3,   // e.g. "Resolved"
     TechId       = 7
+});
+
+// Update ticket (by name)
+await client.UpdateTicketAsync(1234, new NamedUpdateTicketRequest
+{
+    StatusType = "Resolved",
+    TechId     = 7
 });
 
 // Delete ticket
@@ -289,15 +412,17 @@ The SolarWinds Web Help Desk REST API has some documented limitations that are r
 src/
   LS.WHD.Client/
     Authentication/   – AuthMode enum
-    Exceptions/       – WhdApiException
+    Exceptions/       – WhdApiException, WhdMetadataException
     Http/             – WhdHttpClient, WhdHttpClientFactory, QueryParameters
-    Models/           – Request/response DTOs
+    Metadata/         – IWhdMetadataCache, WhdMetadataCache (name→ID resolution)
+    Models/           – Request/response DTOs (incl. NamedCreateTicketRequest, NamedUpdateTicketRequest)
     Services/         – ITicketService, IClientService, IAssetService, …
     WhdClient.cs      – Main entry point
     WhdClientOptions.cs
 
 tests/
   LS.WHD.Client.Tests/
+    MetadataCacheTests.cs
     SerializationTests.cs
     WhdHttpClientTests.cs
     QueryParametersTests.cs
@@ -310,8 +435,8 @@ tests/
 ## Building
 
 ```shell
-dotnet build LS.WHD.Client.sln
-dotnet test  LS.WHD.Client.sln
+dotnet build LS.WHD.Client.slnx
+dotnet test  LS.WHD.Client.slnx
 ```
 
 ---
