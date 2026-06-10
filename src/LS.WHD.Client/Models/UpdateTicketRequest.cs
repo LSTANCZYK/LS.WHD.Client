@@ -32,4 +32,10 @@ public sealed class UpdateTicketRequest
 
     /// <summary>Updated due date.</summary>
     public DateTimeOffset? DueDate { get; init; }
+
+    /// <summary>
+    /// Custom field values to update on the ticket.
+    /// Each entry must specify the field <see cref="CustomField.Id"/> and a <see cref="CustomField.RestValue"/>.
+    /// </summary>
+    public List<CustomField>? CustomFields { get; init; }
 }

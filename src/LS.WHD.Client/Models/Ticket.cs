@@ -49,4 +49,7 @@ public sealed class Ticket
 
     /// <summary>Due date for resolving the ticket.</summary>
     public DateTimeOffset? DueDate { get; set; }
+
+    /// <summary>Custom field values attached to the ticket.</summary>
+    public List<CustomField>? CustomFields { get; set; }
 }

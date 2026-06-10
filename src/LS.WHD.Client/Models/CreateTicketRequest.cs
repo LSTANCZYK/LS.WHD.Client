@@ -31,4 +31,10 @@ public sealed class CreateTicketRequest
 
     /// <summary>Due date for resolving the ticket.</summary>
     public DateTimeOffset? DueDate { get; init; }
+
+    /// <summary>
+    /// Custom field values to set on the ticket.
+    /// Each entry must specify the field <see cref="CustomField.Id"/> and a <see cref="CustomField.RestValue"/>.
+    /// </summary>
+    public List<CustomField>? CustomFields { get; init; }
 }
