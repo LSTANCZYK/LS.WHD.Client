@@ -419,6 +419,11 @@ src/
     Services/         – ITicketService, IClientService, IAssetService, …
     WhdClient.cs      – Main entry point
     WhdClientOptions.cs
+  LS.WHD.Client.Mcp/
+    Tools/            – MCP tool classes (TicketTools, ClientTools, AssetTools, …)
+    Program.cs        – Host builder + STDIO transport
+    WhdConfiguration.cs – Reads env vars and builds WhdClientOptions
+    WhdClientService.cs – Singleton wrapper with lazy metadata initialization
 
 tests/
   LS.WHD.Client.Tests/
@@ -432,12 +437,130 @@ tests/
 
 ---
 
+## MCP Server (`LS.WHD.Client.Mcp`)
+
+`LS.WHD.Client.Mcp` is a **Model Context Protocol (MCP) server** that wraps the
+`LS.WHD.Client` library and exposes WHD operations as MCP tools. LLM clients (such as
+Claude Desktop, VS Code Copilot Chat, and any MCP-compatible host) can connect to it and
+call WHD operations directly from chat or agent workflows.
+
+### What is MCP?
+
+The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standard that
+lets AI assistants talk to external tools and data sources in a structured, type-safe way.
+
+### Configuration
+
+All settings are read from environment variables at startup.
+
+| Variable | Required | Description |
+|---|---|---|
+| `WHD_BASE_URL` | ✅ | Base URL of the WHD server, e.g. `https://helpdesk.example.com:8081` |
+| `WHD_AUTH_MODE` | | `ApiKey` (default) or `BasicAuth` |
+| `WHD_API_KEY` | | API key when `WHD_AUTH_MODE=ApiKey` |
+| `WHD_USERNAME` | | Username when `WHD_AUTH_MODE=BasicAuth` |
+| `WHD_PASSWORD` | | Password when `WHD_AUTH_MODE=BasicAuth` |
+| `WHD_IGNORE_SSL_ERRORS` | | `true` to skip TLS validation (development only) |
+
+### How to run
+
+**From source:**
+
+```shell
+cd src/LS.WHD.Client.Mcp
+
+# ApiKey auth
+WHD_BASE_URL=https://helpdesk.example.com:8081 \
+WHD_API_KEY=your-api-key \
+dotnet run
+```
+
+**Published executable:**
+
+```shell
+dotnet publish src/LS.WHD.Client.Mcp -c Release -o ./publish/mcp
+
+WHD_BASE_URL=https://helpdesk.example.com:8081 \
+WHD_API_KEY=your-api-key \
+./publish/mcp/LS.WHD.Client.Mcp
+```
+
+The server communicates over **STDIO** (standard input / output), which is the conventional
+transport for locally-launched MCP servers.
+
+### Wiring into Claude Desktop
+
+Add an entry to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "whd": {
+      "command": "dotnet",
+      "args": ["run", "--project", "/path/to/src/LS.WHD.Client.Mcp"],
+      "env": {
+        "WHD_BASE_URL": "https://helpdesk.example.com:8081",
+        "WHD_AUTH_MODE": "ApiKey",
+        "WHD_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Or, using a published binary instead of `dotnet run`:
+
+```json
+{
+  "mcpServers": {
+    "whd": {
+      "command": "/path/to/publish/mcp/LS.WHD.Client.Mcp",
+      "env": {
+        "WHD_BASE_URL": "https://helpdesk.example.com:8081",
+        "WHD_AUTH_MODE": "ApiKey",
+        "WHD_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Available tools
+
+| Tool | Description |
+|---|---|
+| `list_tickets` | Returns a paged list of tickets |
+| `get_ticket` | Returns a single ticket by ID |
+| `create_ticket` | Creates a new ticket (priority / request type accept display names) |
+| `update_ticket` | Updates an existing ticket (status / priority / request type accept display names) |
+| `list_clients` | Returns a paged list of client (end-user) accounts |
+| `search_clients` | Searches clients by username or email |
+| `list_assets` | Returns a paged list of assets |
+| `search_assets` | Searches assets by name or tag |
+| `list_locations` | Returns all configured locations |
+| `list_request_types` | Returns all configured request type categories |
+| `add_ticket_note` | Adds a note / comment to a ticket |
+| `list_ticket_notes` | Returns all notes for a ticket |
+| `list_priorities` | Returns all priority types |
+| `list_status_types` | Returns all status types |
+| `list_technicians` | Returns a paged list of technician accounts |
+
+**LLM-friendly design:** `create_ticket` and `update_ticket` accept priority, request type,
+and status values as **display names** (e.g. `"High"`, `"IT Support"`, `"Resolved"`) in
+addition to numeric IDs. The server resolves names to IDs automatically using the metadata
+cache, which is populated lazily on first use.
+
+---
+
 ## Building
 
 ```shell
 dotnet build LS.WHD.Client.slnx
 dotnet test  LS.WHD.Client.slnx
 ```
+
+The solution contains both the client library (`LS.WHD.Client`) and the MCP server
+(`LS.WHD.Client.Mcp`). Running the commands above builds and tests both.
 
 ---
 
