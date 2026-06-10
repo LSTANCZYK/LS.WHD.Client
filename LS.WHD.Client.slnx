@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/LS.WHD.Client/LS.WHD.Client.csproj" />
+    <Project Path="src/LS.WHD.Client.Mcp/LS.WHD.Client.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/LS.WHD.Client.Tests/LS.WHD.Client.Tests.csproj" />
