@@ -42,6 +42,7 @@ public sealed class WhdClient : IDisposable
         RequestTypes = new RequestTypeService(_http);
         Notes        = new NoteService(_http);
         Lookups      = new LookupService(_http);
+        CustomFields = new CustomFieldService(_http);
     }
 
     // ──────────────────────── Service accessors ────────────────────────
@@ -66,6 +67,9 @@ public sealed class WhdClient : IDisposable
 
     /// <summary>Lookup operations (status types, priority types, technicians).</summary>
     public ILookupService Lookups { get; }
+
+    /// <summary>Operations on custom field definitions.</summary>
+    public ICustomFieldService CustomFields { get; }
 
     /// <inheritdoc/>
     public void Dispose() => _http.Dispose();

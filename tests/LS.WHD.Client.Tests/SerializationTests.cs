@@ -206,6 +206,123 @@ public class SerializationTests
     }
 
     [Fact]
+    public void CustomField_RoundTrip_PreservesAllFields()
+    {
+        var field = new CustomField
+        {
+            Id = 3,
+            FieldLabel = "Department",
+            Value = "Engineering",
+            RestValue = "Engineering",
+            Required = true
+        };
+
+        var json = JsonSerializer.Serialize(field, Options);
+        var deserialized = JsonSerializer.Deserialize<CustomField>(json, Options);
+
+        Assert.NotNull(deserialized);
+        Assert.Equal(3, deserialized.Id);
+        Assert.Equal("Department", deserialized.FieldLabel);
+        Assert.Equal("Engineering", deserialized.Value);
+        Assert.Equal("Engineering", deserialized.RestValue);
+        Assert.True(deserialized.Required);
+    }
+
+    [Fact]
+    public void CustomFieldDefinition_RoundTrip_PreservesAllFields()
+    {
+        var def = new CustomFieldDefinition
+        {
+            Id = 5,
+            FieldLabel = "Cost Center",
+            FieldType = "TEXT",
+            Required = false,
+            OrderNumber = 2
+        };
+
+        var json = JsonSerializer.Serialize(def, Options);
+        var deserialized = JsonSerializer.Deserialize<CustomFieldDefinition>(json, Options);
+
+        Assert.NotNull(deserialized);
+        Assert.Equal(5, deserialized.Id);
+        Assert.Equal("Cost Center", deserialized.FieldLabel);
+        Assert.Equal("TEXT", deserialized.FieldType);
+        Assert.False(deserialized.Required);
+        Assert.Equal(2, deserialized.OrderNumber);
+    }
+
+    [Fact]
+    public void Ticket_WithCustomFields_RoundTrip()
+    {
+        var ticket = new Ticket
+        {
+            Id = 7,
+            Subject = "VPN issue",
+            CustomFields =
+            [
+                new CustomField { Id = 1, FieldLabel = "Department", Value = "IT", RestValue = "IT" },
+                new CustomField { Id = 2, FieldLabel = "Cost Center", Value = "CC-100", RestValue = "CC-100", Required = true }
+            ]
+        };
+
+        var json = JsonSerializer.Serialize(ticket, Options);
+        var deserialized = JsonSerializer.Deserialize<Ticket>(json, Options);
+
+        Assert.NotNull(deserialized);
+        Assert.Equal(2, deserialized.CustomFields?.Count);
+        Assert.Equal(1, deserialized.CustomFields![0].Id);
+        Assert.Equal("Department", deserialized.CustomFields[0].FieldLabel);
+        Assert.Equal("IT", deserialized.CustomFields[0].Value);
+        Assert.Equal(2, deserialized.CustomFields[1].Id);
+        Assert.True(deserialized.CustomFields[1].Required);
+    }
+
+    [Fact]
+    public void CreateTicketRequest_WithCustomFields_Serializes()
+    {
+        var request = new CreateTicketRequest
+        {
+            Subject = "Access request",
+            CustomFields =
+            [
+                new CustomField { Id = 3, RestValue = "Finance" }
+            ]
+        };
+
+        var json = JsonSerializer.Serialize(request, Options);
+
+        Assert.Contains("customFields", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Finance", json);
+    }
+
+    [Fact]
+    public void UpdateTicketRequest_WithCustomFields_Serializes()
+    {
+        var request = new UpdateTicketRequest
+        {
+            CustomFields =
+            [
+                new CustomField { Id = 3, RestValue = "Marketing" }
+            ]
+        };
+
+        var json = JsonSerializer.Serialize(request, Options);
+
+        Assert.Contains("customFields", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Marketing", json);
+    }
+
+    [Fact]
+    public void Ticket_NoCustomFields_OmittedFromJson()
+    {
+        var ticket = new Ticket { Id = 1, Subject = "Test" };
+
+        var json = JsonSerializer.Serialize(ticket, Options);
+
+        Assert.DoesNotContain("customFields", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void WhdRef_RoundTrip()
     {
         var @ref = new WhdRef { Id = 7, Name = "Some Entity" };
